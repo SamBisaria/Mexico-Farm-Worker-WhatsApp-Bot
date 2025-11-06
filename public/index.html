@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Empleos - San Quintín</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Portal de Empleos Agrícolas</h1>
+        
+        <div id="loginForm" class="form-container">
+            <h2>Iniciar Sesión</h2>
+            <form id="login">
+                <input type="email" id="loginEmail" placeholder="Correo electrónico" required>
+                <input type="password" id="loginPassword" placeholder="Contraseña" required>
+                <button type="submit">Iniciar Sesión</button>
+            </form>
+            <p>¿No tienes cuenta? <a href="#" onclick="showRegister()">Regístrate</a></p>
+        </div>
+
+        <div id="registerForm" class="form-container" style="display:none;">
+            <h2>Registro de Empleador</h2>
+            <form id="register">
+                <input type="text" id="companyName" placeholder="Nombre de la empresa" required>
+                <input type="email" id="registerEmail" placeholder="Correo electrónico" required>
+                <input type="password" id="registerPassword" placeholder="Contraseña" required>
+                <button type="submit">Registrarse</button>
+            </form>
+            <p>¿Ya tienes cuenta? <a href="#" onclick="showLogin()">Inicia sesión</a></p>
+        </div>
+
+        <div id="dashboard" style="display:none;">
+            <div class="header">
+                <h2>Panel de Control - <span id="companyDisplay"></span></h2>
+                <button onclick="logout()">Cerrar Sesión</button>
+            </div>
+
+            <div class="job-form">
+                <h3>Publicar Nuevo Trabajo</h3>
+                <form id="jobForm">
+                    <input type="text" id="title" placeholder="Título del trabajo" required>
+                    <input type="text" id="location" placeholder="Ubicación" required>
+                    <input type="number" id="payRate" placeholder="Pago" required>
+                    <select id="payType" required>
+                        <option value="">Tipo de pago</option>
+                        <option value="por hora">Por hora</option>
+                        <option value="por día">Por día</option>
+                        <option value="por caja">Por caja</option>
+                        <option value="por kilo">Por kilo</option>
+                    </select>
+                    <label>
+                        <input type="checkbox" id="transport"> Transporte incluido
+                    </label>
+                    <input type="text" id="duration" placeholder="Duración (ej: 8 horas)" required>
+                    <input type="date" id="date" required>
+                    <textarea id="description" placeholder="Descripción del trabajo" rows="3"></textarea>
+                    <button type="submit">Publicar Trabajo</button>
+                </form>
+            </div>
+
+            <div class="jobs-list">
+                <h3>Trabajos Publicados</h3>
+                <div id="jobsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
