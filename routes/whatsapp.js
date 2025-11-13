@@ -3,48 +3,60 @@ const twilio = require('twilio');
 const db = require('../database/db');
 const router = express.Router();
 
+
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
   process.env.TWILIO_AUTH_TOKEN
 );
 
-// WhatsApp webhook
 router.post('/', (req, res) => {
   const { From, Body } = req.body;
   const message = Body.toLowerCase().trim();
   const phoneNumber = From.replace('whatsapp:', '');
 
-  // Check if user exists
   db.get('SELECT * FROM workers WHERE phone = ?', [phoneNumber], (err, worker) => {
     if (!worker && message !== 'registrar') {
-      sendWhatsAppMessage(From, 
-        '¡Hola! 👋 Para registrarte en el sistema de empleos, envía "REGISTRAR"');
+      sendWhatsAppMessage(From, '¡Hola! 👋 Para registrarte...');
+      return res.sendStatus(200); // ✅ returns here, so nothing else runs
+    }
+
+    // Handle commands
+    if (message === 'registrar') {
+      handleRegistration(From, phoneNumber);
+      return res.sendStatus(200);
+    } 
+    if (message === 'ayuda' || message === 'help') {
+      sendHelpMenu(From);
+      return res.sendStatus(200);
+    }
+    if (message === 'trabajos' || message === 'jobs') {
+      sendAvailableJobs(From, worker);
+      return res.sendStatus(200);
+    }
+    if (message.startsWith('aceptar')) {
+      const jobId = message.split(' ')[1];
+      acceptJob(From, worker, jobId);
+      return res.sendStatus(200);
+    }
+    if (message === 'parar' || message === 'stop') {
+      unsubscribe(From, phoneNumber);
+      return res.sendStatus(200);
+    }
+    if (message.startsWith('nombre:')) {
+      updateName(From, phoneNumber, Body.substring(7).trim());
+      return res.sendStatus(200);
+    }
+    if (message.startsWith('ubicacion:')) {
+      updateLocation(From, phoneNumber, Body.substring(10).trim());
       return res.sendStatus(200);
     }
 
-    // Handle different commands
-    if (message === 'registrar') {
-      handleRegistration(From, phoneNumber);
-    } else if (message === 'ayuda' || message === 'help') {
-      sendHelpMenu(From);
-    } else if (message === 'trabajos' || message === 'jobs') {
-      sendAvailableJobs(From, worker);
-    } else if (message.startsWith('aceptar')) {
-      const jobId = message.split(' ')[1];
-      acceptJob(From, worker, jobId);
-    } else if (message === 'parar' || message === 'stop') {
-      unsubscribe(From, phoneNumber);
-    } else if (message.startsWith('nombre:')) {
-      updateName(From, phoneNumber, Body.substring(7).trim());
-    } else if (message.startsWith('ubicacion:')) {
-      updateLocation(From, phoneNumber, Body.substring(10).trim());
-    } else {
-      sendHelpMenu(From);
-    }
+    // default help
+    sendHelpMenu(From);
+    return res.sendStatus(200);
   });
-
-  res.sendStatus(200);
 });
+
 
 function sendWhatsAppMessage(to, message) {
   return client.messages.create({

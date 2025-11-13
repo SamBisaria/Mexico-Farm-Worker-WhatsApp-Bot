@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3000/api';
+const API_URL = 'https://dictatorially-untaunting-taren.ngrok-free.dev/api';
 let authToken = null;
 
 // Check if already logged in
@@ -34,7 +34,7 @@ document.getElementById('login').addEventListener('submit', async (e) => {
             alert(data.error);
         }
     } catch (error) {
-        alert('Error de conexión');
+        alert(error);
     }
 });
 

@@ -12,7 +12,7 @@ const whatsappRoutes = require('./routes/whatsapp');
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({ origin: '*' }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
@@ -20,7 +20,7 @@ app.use(express.static('public'));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/jobs', jobRoutes);
-app.use('/webhook/whatsapp', whatsappRoutes);
+app.use('/whatsapp', whatsappRoutes);
 
 // Serve HTML files
 app.get('/', (req, res) => {
