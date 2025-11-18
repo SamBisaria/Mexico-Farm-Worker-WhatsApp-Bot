@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Registro de Trabajador</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width:600px; margin:2rem auto; padding:1rem; }
+    label { display:block; margin-top:0.75rem }
+    input, select, textarea { width:100%; padding:0.5rem; margin-top:0.25rem }
+    button { margin-top:1rem; padding:0.75rem 1rem }
+  </style>
+</head>
+<body>
+  <h1>Registro de Trabajador</h1>
+  <p>Por favor completa tu información para terminar el registro.</p>
+
+  <form id="signupForm" method="POST" action="/signup">
+    <input type="hidden" name="phone" id="phoneInput" />
+
+    <label>Nombre
+      <input type="text" name="name" id="name" required />
+    </label>
+
+    <label>CP (código postal)
+      <input type="text" name="zip" id="zip" pattern="[0-9]{3,10}" required />
+    </label>
+
+    <label>Edad
+      <input type="number" name="age" id="age" min="14" max="120" required />
+    </label>
+
+    <label>Género
+      <select name="gender" id="gender" required>
+        <option value="">-- selecciona --</option>
+        <option value="male">Hombre</option>
+        <option value="female">Mujer</option>
+        <option value="other">Otro</option>
+      </select>
+    </label>
+
+    <label>Experiencia (breve)
+      <textarea name="experience" id="experience" rows="4" placeholder="Por ejemplo: 3 años de cosecha de tomates"></textarea>
+    </label>
+
+    <button type="submit">Enviar registro</button>
+  </form>
+
+  <script>
+    // Read phone from query param and put into hidden field
+    function getQueryParam(name) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(name);
+    }
+
+    const phone = getQueryParam('phone');
+    if (phone) {
+      // phone may be in form '1234567890' or 'whatsapp:...' - clean non-digits
+      document.getElementById('phoneInput').value = phone.replace(/[^0-9]/g, '');
+    }
+
+    // Basic client-side validation before submit
+    document.getElementById('signupForm').addEventListener('submit', function(e) {
+      const phoneVal = document.getElementById('phoneInput').value;
+      if (!phoneVal) {
+        e.preventDefault();
+        alert('Falta número telefónico. Abre la forma desde el enlace de WhatsApp.');
+      }
+    });
+  </script>
+</body>
+</html>

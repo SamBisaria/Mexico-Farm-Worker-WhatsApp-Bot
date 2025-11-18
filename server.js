@@ -8,6 +8,7 @@ const db = require('./database/db');
 const authRoutes = require('./routes/auth');
 const jobRoutes = require('./routes/jobs');
 const whatsappRoutes = require('./routes/whatsapp');
+const signupRoutes = require('./routes/signup');
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use(express.static('public'));
 app.use('/api/auth', authRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/whatsapp', whatsappRoutes);
+app.use('/signup', signupRoutes);
 
 // Serve HTML files
 app.get('/', (req, res) => {

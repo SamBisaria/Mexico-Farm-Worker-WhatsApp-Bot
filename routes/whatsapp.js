@@ -12,9 +12,9 @@ const client = twilio(
 router.post('/', (req, res) => {
   const { From, Body } = req.body;
   const message = Body.toLowerCase().trim();
-  const phoneNumber = From.replace('whatsapp:', '');
+  const cleanNumber = From.replace('whatsapp:', '').replace(/[^0-9]/g, '');
 
-  db.get('SELECT * FROM workers WHERE phone = ?', [phoneNumber], (err, worker) => {
+  db.get('SELECT * FROM workers WHERE phone = ?', [cleanNumber], (err, worker) => {
     if (!worker && message !== 'registrar') {
       sendWhatsAppMessage(From, '¡Hola! 👋 Para registrarte...');
       return res.sendStatus(200); // ✅ returns here, so nothing else runs
@@ -22,7 +22,7 @@ router.post('/', (req, res) => {
 
     // Handle commands
     if (message === 'registrar') {
-      handleRegistration(From, phoneNumber);
+      handleRegistration(From, cleanNumber);
       return res.sendStatus(200);
     } 
     if (message === 'ayuda' || message === 'help') {
@@ -39,15 +39,15 @@ router.post('/', (req, res) => {
       return res.sendStatus(200);
     }
     if (message === 'parar' || message === 'stop') {
-      unsubscribe(From, phoneNumber);
+      unsubscribe(From, cleanNumber);
       return res.sendStatus(200);
     }
     if (message.startsWith('nombre:')) {
-      updateName(From, phoneNumber, Body.substring(7).trim());
+      updateName(From, cleanNumber, Body.substring(7).trim());
       return res.sendStatus(200);
     }
     if (message.startsWith('ubicacion:')) {
-      updateLocation(From, phoneNumber, Body.substring(10).trim());
+      updateLocation(From, cleanNumber, Body.substring(10).trim());
       return res.sendStatus(200);
     }
 
@@ -68,22 +68,22 @@ function sendWhatsAppMessage(to, message) {
 
 function handleRegistration(phoneNumber, cleanNumber) {
   db.get('SELECT * FROM workers WHERE phone = ?', [cleanNumber], (err, worker) => {
+    const base = process.env.BASE_URL || 'https://dictatorially-untaunting-taren.ngrok-free.dev/';
+    const signupLink = `${base.replace(/\/$/, '')}/signup?phone=${cleanNumber}`;
+
     if (worker) {
-      sendWhatsAppMessage(phoneNumber, 
-        '✅ Ya estás registrado!\n\nPuedes actualizar tu información:\n' +
-        '📝 Envía "NOMBRE: tu nombre"\n' +
-        '📍 Envía "UBICACION: tu ubicación"');
+      const msg =
+        '✅ Ya estás registrado!\n\n' +
+        `Si quieres actualizar tu información, completa el formulario: ${signupLink}\n\n` +
+        '📝 También puedes actualizar algunos campos por WhatsApp. ' +
+        'Envía "NOMBRE: tu nombre" o "UBICACION: tu ubicación"';
+      sendWhatsAppMessage(phoneNumber, msg);
     } else {
-      db.run('INSERT INTO workers (phone) VALUES (?)', [cleanNumber], function(err) {
-        if (!err) {
-          sendWhatsAppMessage(phoneNumber,
-            '🎉 ¡Registro exitoso!\n\n' +
-            'Por favor completa tu perfil:\n' +
-            '📝 Envía "NOMBRE: tu nombre"\n' +
-            '📍 Envía "UBICACION: tu ubicación"\n\n' +
-            'Envía "AYUDA" para ver todos los comandos.');
-        }
-      });
+      // Do not auto-insert here; require the user to complete the online form.
+      sendWhatsAppMessage(phoneNumber,
+        '🎉 ¡Casi listo! Para completar tu registro, por favor abre el siguiente enlace y rellena el formulario:\n' +
+        `${signupLink}\n\n` +
+        'Si no puedes abrir el enlace, responde con "AYUDA" para más opciones.');
     }
   });
 }

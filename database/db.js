@@ -53,6 +53,26 @@ db.serialize(() => {
     FOREIGN KEY (worker_id) REFERENCES workers (id),
     FOREIGN KEY (job_id) REFERENCES jobs (id)
   )`);
+  // Ensure worker demographics columns exist (adds columns on existing DBs)
+  const requiredWorkerColumns = [
+    { name: 'zip', def: 'TEXT' },
+    { name: 'age', def: 'INTEGER' },
+    { name: 'gender', def: 'TEXT' },
+    { name: 'experience', def: 'TEXT' }
+  ];
+
+  db.all("PRAGMA table_info('workers')", (err, rows) => {
+    if (err) {
+      console.error('Failed reading workers table info', err);
+    } else {
+      const existing = rows.map(r => r.name);
+      requiredWorkerColumns.forEach(col => {
+        if (!existing.includes(col.name)) {
+          db.run(`ALTER TABLE workers ADD COLUMN ${col.name} ${col.def}`);
+        }
+      });
+    }
+  });
 
   console.log('Database initialized');
 });
