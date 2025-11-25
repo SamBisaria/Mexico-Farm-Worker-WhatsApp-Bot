@@ -9,6 +9,7 @@
 <body>
     <div class="container">
         <h1>Portal de Empleos Agrícolas</h1>
+        <p><a href="/jobs">Ver trabajos disponibles</a></p>
         
         <div id="loginForm" class="form-container">
             <h2>Iniciar Sesión</h2>
@@ -41,7 +42,22 @@
                 <h3>Publicar Nuevo Trabajo</h3>
                 <form id="jobForm">
                     <input type="text" id="title" placeholder="Título del trabajo" required>
-                    <input type="text" id="location" placeholder="Ubicación" required>
+                    
+                    <div style="background:#f5f5f5; padding:1rem; border-radius:4px; margin:1rem 0;">
+                        <h4 style="margin-top:0;">📍 Ubicación del Trabajo</h4>
+                        <div class="address-container">
+                            <input type="text" id="jobAddress" placeholder="Escribe la dirección o usa GPS..." 
+                                   autocomplete="off" required>
+                            <button type="button" class="gps-btn" onclick="useMyLocation()">
+                                📱 GPS
+                            </button>
+                            <div id="jobAddressSuggestions"></div>
+                        </div>
+                        <div id="jobLocationStatus" style="margin-top:0.5rem; font-size:0.9em; color:#666;"></div>
+                        <input type="hidden" id="jobLatitude">
+                        <input type="hidden" id="jobLongitude">
+                    </div>
+
                     <input type="number" id="payRate" placeholder="Pago" required>
                     <select id="payType" required>
                         <option value="">Tipo de pago</option>

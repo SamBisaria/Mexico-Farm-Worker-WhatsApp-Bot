@@ -64,13 +64,141 @@ document.getElementById('register').addEventListener('submit', async (e) => {
     }
 });
 
+let jobSearchTimeout;
+let jobAddressValidated = false;
+const jobAddressInput = document.getElementById('jobAddress');
+const jobSuggestionsDiv = document.getElementById('jobAddressSuggestions');
+const jobStatusEl = document.getElementById('jobLocationStatus');
+
+function useMyLocation() {
+    jobStatusEl.textContent = 'Obteniendo ubicación...';
+    
+    if (!navigator.geolocation) {
+        jobStatusEl.textContent = '❌ Tu navegador no soporta geolocalización';
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        async (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            jobStatusEl.textContent = '✅ Obteniendo dirección...';
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, {
+                    headers: { 'User-Agent': 'SanQuintinJobsApp/1.0' }
+                });
+                const data = await response.json();
+                if (data && data.display_name) {
+                    jobAddressInput.value = data.display_name;
+                    document.getElementById('jobLatitude').value = lat;
+                    document.getElementById('jobLongitude').value = lng;
+                    jobStatusEl.textContent = '✅ Ubicación obtenida';
+                    jobAddressValidated = true;
+                }
+            } catch (err) {
+                console.error('Reverse geocoding failed:', err);
+                jobStatusEl.textContent = '❌ Error obteniendo dirección';
+            }
+        },
+        (error) => {
+            jobStatusEl.textContent = '❌ No se pudo obtener la ubicación';
+            console.error('Geolocation error:', error);
+        }
+    );
+}
+
+jobAddressInput.addEventListener('input', function() {
+    const query = this.value.trim();
+    
+    // Reset validation when user modifies address
+    jobAddressValidated = false;
+    document.getElementById('jobLatitude').value = '';
+    document.getElementById('jobLongitude').value = '';
+    
+    clearTimeout(jobSearchTimeout);
+    
+    if (query.length < 3) {
+        jobSuggestionsDiv.style.display = 'none';
+        jobStatusEl.textContent = '';
+        return;
+    }
+    
+    jobStatusEl.textContent = 'Buscando direcciones...';
+    
+    jobSearchTimeout = setTimeout(async () => {
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1`, {
+                headers: { 'User-Agent': 'SanQuintinJobsApp/1.0' }
+            });
+            const results = await response.json();
+            
+            if (results && results.length > 0) {
+                jobSuggestionsDiv.innerHTML = results.map(result => 
+                    `<div class="job-suggestion-item"
+                         data-lat="${result.lat}" 
+                         data-lon="${result.lon}" 
+                         data-address="${result.display_name}">
+                      ${result.display_name}
+                    </div>`
+                ).join('');
+                jobSuggestionsDiv.style.display = 'block';
+                jobStatusEl.textContent = '';
+                
+                document.querySelectorAll('.job-suggestion-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        jobAddressInput.value = this.getAttribute('data-address');
+                        document.getElementById('jobLatitude').value = this.getAttribute('data-lat');
+                        document.getElementById('jobLongitude').value = this.getAttribute('data-lon');
+                        
+                        jobSuggestionsDiv.style.display = 'none';
+                        jobStatusEl.textContent = '✅ Dirección seleccionada';
+                        jobAddressValidated = true;
+                    });
+                });
+            } else {
+                jobSuggestionsDiv.innerHTML = '<div style="padding:0.75rem; color:#999;">No se encontraron direcciones</div>';
+                jobSuggestionsDiv.style.display = 'block';
+                jobStatusEl.textContent = '';
+            }
+        } catch (err) {
+            console.error('Search error:', err);
+            jobSuggestionsDiv.style.display = 'none';
+            jobStatusEl.textContent = '❌ Error buscando direcciones';
+        }
+    }, 300);
+});
+
+document.addEventListener('click', function(e) {
+    if (!jobAddressInput.contains(e.target) && !jobSuggestionsDiv.contains(e.target)) {
+        jobSuggestionsDiv.style.display = 'none';
+    }
+});
+
 // Job form
 document.getElementById('jobForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
+    const address = document.getElementById('jobAddress').value;
+    const latitude = document.getElementById('jobLatitude').value;
+    const longitude = document.getElementById('jobLongitude').value;
+
+    if (!address) {
+        alert('Por favor ingresa la dirección del trabajo');
+        return;
+    }
+
+    if (!latitude || !longitude || !jobAddressValidated) {
+        alert('Por favor selecciona una dirección de las sugerencias o usa GPS.');
+        return;
+    }
+
     const jobData = {
         title: document.getElementById('title').value,
-        location: document.getElementById('location').value,
+        location: address,
+        address: address,
+        latitude: latitude || null,
+        longitude: longitude || null,
         pay_rate: document.getElementById('payRate').value,
         pay_type: document.getElementById('payType').value,
         transport_provided: document.getElementById('transport').checked ? 1 : 0,
@@ -93,6 +221,7 @@ document.getElementById('jobForm').addEventListener('submit', async (e) => {
         if (response.ok) {
             alert('Trabajo publicado exitosamente');
             document.getElementById('jobForm').reset();
+            document.getElementById('jobLocationStatus').textContent = '';
             loadJobs();
         } else {
             alert(data.error);

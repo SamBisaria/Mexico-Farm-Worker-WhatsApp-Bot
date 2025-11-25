@@ -58,7 +58,10 @@ db.serialize(() => {
     { name: 'zip', def: 'TEXT' },
     { name: 'age', def: 'INTEGER' },
     { name: 'gender', def: 'TEXT' },
-    { name: 'experience', def: 'TEXT' }
+    { name: 'experience', def: 'INTEGER' },
+    { name: 'latitude', def: 'REAL' },
+    { name: 'longitude', def: 'REAL' },
+    { name: 'address', def: 'TEXT' }
   ];
 
   db.all("PRAGMA table_info('workers')", (err, rows) => {
@@ -69,6 +72,26 @@ db.serialize(() => {
       requiredWorkerColumns.forEach(col => {
         if (!existing.includes(col.name)) {
           db.run(`ALTER TABLE workers ADD COLUMN ${col.name} ${col.def}`);
+        }
+      });
+    }
+  });
+
+  // Ensure job location columns exist
+  const requiredJobColumns = [
+    { name: 'latitude', def: 'REAL' },
+    { name: 'longitude', def: 'REAL' },
+    { name: 'address', def: 'TEXT' }
+  ];
+
+  db.all("PRAGMA table_info('jobs')", (err, rows) => {
+    if (err) {
+      console.error('Failed reading jobs table info', err);
+    } else {
+      const existing = rows.map(r => r.name);
+      requiredJobColumns.forEach(col => {
+        if (!existing.includes(col.name)) {
+          db.run(`ALTER TABLE jobs ADD COLUMN ${col.name} ${col.def}`);
         }
       });
     }

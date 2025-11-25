@@ -21,29 +21,50 @@ router.get('/', authenticateToken, (req, res) => {
 });
 
 // Create new job
-router.post('/', authenticateToken, (req, res) => {
-  const { title, location, pay_rate, pay_type, transport_provided, duration, description, date } = req.body;
+router.post('/', authenticateToken, async (req, res) => {
+  const { title, location, pay_rate, pay_type, transport_provided, duration, description, date, latitude, longitude, address } = req.body;
+  
+  // Import geocoder
+  const { geocodeAddress } = require('../utils/geocoder');
+
+  // Get coordinates - either from request or geocode the address
+  let lat = latitude;
+  let lng = longitude;
+  let finalAddress = address || location;
+
+  if (!lat && !lng && (address || location)) {
+    // Geocode the address
+    const coords = await geocodeAddress(address || location);
+    if (coords) {
+      lat = coords.latitude;
+      lng = coords.longitude;
+      finalAddress = coords.formattedAddress || address || location;
+    }
+  }
   
   db.run(
-    `INSERT INTO jobs (employer_id, title, location, pay_rate, pay_type, transport_provided, duration, description, date) 
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [req.user.id, title, location, pay_rate, pay_type, transport_provided, duration, description, date],
+    `INSERT INTO jobs (employer_id, title, location, pay_rate, pay_type, transport_provided, duration, description, date, latitude, longitude, address) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [req.user.id, title, finalAddress, pay_rate, pay_type, transport_provided, duration, description, date, lat, lng, finalAddress],
     async function(err) {
       if (err) {
         return res.status(500).json({ error: 'Database error' });
       }
       
-      // Send WhatsApp notifications to workers
+      // Send WhatsApp notifications to recommended workers
       const jobId = this.lastID;
       await sendJobToWorkers({
         id: jobId,
         title,
-        location,
+        location: finalAddress,
         pay_rate,
         pay_type,
         transport_provided,
         duration,
-        date
+        date,
+        latitude: lat,
+        longitude: lng,
+        address: finalAddress
       });
       
       res.json({ message: 'Job posted successfully', id: jobId });
@@ -72,3 +93,15 @@ router.delete('/:id', authenticateToken, (req, res) => {
 });
 
 module.exports = router;
+
+// Public endpoint: list active jobs for the website
+router.get('/public', (req, res) => {
+  db.all(
+    'SELECT * FROM jobs WHERE active = 1 AND date >= date("now")',
+    [],
+    (err, jobs) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      res.json(jobs);
+    }
+  );
+});

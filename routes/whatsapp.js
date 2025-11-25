@@ -1,6 +1,7 @@
 const express = require('express');
 const twilio = require('twilio');
 const db = require('../database/db');
+const { getRecommendedWorkers } = require('../utils/jobMatcher');
 const router = express.Router();
 
 
@@ -31,6 +32,11 @@ router.post('/', (req, res) => {
     }
     if (message === 'trabajos' || message === 'jobs') {
       sendAvailableJobs(From, worker);
+      return res.sendStatus(200);
+    }
+    // Send a link to the public jobs page (single-word command aliases)
+    if (message === 'enlace' || message === 'link' || message === 'pagina') {
+      sendJobsPageLink(From);
       return res.sendStatus(200);
     }
     if (message.startsWith('aceptar')) {
@@ -94,6 +100,7 @@ function sendHelpMenu(phoneNumber) {
     '📝 *NOMBRE:* tu nombre - Actualizar nombre\n' +
     '📍 *UBICACION:* tu ubicación - Actualizar ubicación\n' +
     '💼 *TRABAJOS* - Ver trabajos disponibles\n' +
+    '🔗 *ENLACE* - Recibir enlace a la página de trabajos\n' +
     '✅ *ACEPTAR* [número] - Aceptar un trabajo\n' +
     '🛑 *PARAR* - Dejar de recibir mensajes\n' +
     '❓ *AYUDA* - Ver este menú';
@@ -175,11 +182,16 @@ function unsubscribe(phoneNumber, cleanNumber) {
   });
 }
 
+function sendJobsPageLink(phoneNumber) {
+  const base = process.env.BASE_URL || `https://dictatorially-untaunting-taren.ngrok-free.dev`;
+  const jobsLink = `${base.replace(/\/$/, '')}/jobs`;
+  sendWhatsAppMessage(phoneNumber, `🔗 Ver trabajos disponibles: ${jobsLink}`);
+}
+
 // Function to send job notifications (called from jobs.js)
-async function sendJobToWorkers(job) {
-  db.all('SELECT * FROM workers WHERE active = 1', [], (err, workers) => {
-    if (err) return;
-    
+// Uses hybrid recommendation algorithm combining collaborative filtering and location proximity
+async function sendJobToWorkers(job, specificWorkers = null) {
+  const sendTo = (workers) => {
     const message = 
       `🆕 *NUEVO TRABAJO DISPONIBLE*\n\n` +
       `*${job.title}*\n` +
@@ -193,7 +205,21 @@ async function sendJobToWorkers(job) {
     workers.forEach(worker => {
       sendWhatsAppMessage(`whatsapp:${worker.phone}`, message);
     });
-  });
+  };
+
+  if (specificWorkers) {
+    sendTo(specificWorkers);
+  } else {
+    // Use recommendation algorithm: distance filter (10km) + collaborative filtering
+    const recommendedWorkers = await getRecommendedWorkers(job, 50, 10); // threshold: 50/100, maxDistance: 10km
+    
+    if (recommendedWorkers.length > 0) {
+      console.log(`Sending job #${job.id} to ${recommendedWorkers.length} recommended workers (within 10km)`);
+      sendTo(recommendedWorkers);
+    } else {
+      console.log(`No workers within 10km matched recommendation threshold for job #${job.id}`);
+    }
+  }
 }
 
 module.exports = router;

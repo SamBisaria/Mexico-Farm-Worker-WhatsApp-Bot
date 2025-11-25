@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trabajos Disponibles - San Quintín</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Trabajos Disponibles</h1>
+    <p><a href="/">← Volver al inicio</a></p>
+
+    <div id="jobsContainer">
+      <p>Cargando trabajos...</p>
+    </div>
+  </div>
+
+  <script>
+    async function loadPublicJobs() {
+      try {
+        const res = await fetch('/api/jobs/public');
+        if (!res.ok) throw new Error('Error fetching jobs');
+        const jobs = await res.json();
+        const container = document.getElementById('jobsContainer');
+
+        if (!Array.isArray(jobs) || jobs.length === 0) {
+          container.innerHTML = '<p>No hay trabajos disponibles.</p>';
+          return;
+        }
+
+        container.innerHTML = jobs.map(job => `
+          <div class="job-card">
+            <div class="job-info">
+              <h3>${job.title}</h3>
+              <p>📍 ${job.location}</p>
+              <p>💰 $${job.pay_rate} ${job.pay_type}</p>
+              <p>📅 ${new Date(job.date).toLocaleDateString('es-MX')}</p>
+              <p>⏱️ ${job.duration}</p>
+              ${job.transport_provided ? '<p>🚌 Transporte incluido</p>' : ''}
+              <p>${job.description || ''}</p>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        document.getElementById('jobsContainer').innerHTML = '<p>Error al cargar los trabajos.</p>';
+        console.error(err);
+      }
+    }
+
+    window.onload = loadPublicJobs;
+  </script>
+</body>
+</html>

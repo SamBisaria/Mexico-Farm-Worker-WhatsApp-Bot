@@ -33,6 +33,11 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
+// Public jobs page
+app.get('/jobs', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'jobs.html'));
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

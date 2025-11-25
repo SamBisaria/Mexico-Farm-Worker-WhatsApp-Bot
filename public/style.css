@@ -44,6 +44,60 @@ input, select, textarea {
     border: 1px solid #ddd;
     border-radius: 5px;
     font-size: 14px;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.address-container {
+    position: relative;
+}
+
+.gps-btn {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 8px 12px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.gps-btn:hover {
+    background: #5568d3;
+}
+
+#jobAddressSuggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ccc;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: 4px;
+    margin-top: 2px;
+}
+
+.job-suggestion-item {
+    padding: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+
+.job-suggestion-item:hover {
+    background: #f0f0f0;
+}
+
+.job-suggestion-item:last-child {
+    border-bottom: none;
 }
 
 button {
