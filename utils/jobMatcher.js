@@ -12,11 +12,11 @@ const MAX_DISTANCE_KM = 10;
  * 
  * NOTE: Location is NOT part of scoring - it's a hard filter (jobs outside MAX_DISTANCE_KM are excluded)
  */
-async function calculateJobScore(worker, job, distance) {
+async function calculateJobScore(worker, job) {
   let score = 0;
   
   // 1. Collaborative filtering (0-50 points) - Learn from similar workers
-  score += await calculateCollaborativeScore(worker, job);
+  score += await calculateCollaborativeScore(worker);
   
   // 2. Experience match (0-30 points)
   score += calculateExperienceScore(worker, job);
@@ -31,34 +31,36 @@ async function calculateJobScore(worker, job, distance) {
  * Collaborative filtering: Find similar workers and see their acceptance patterns
  * Looks at workers with similar demographics who accepted similar jobs
  */
-function calculateCollaborativeScore(worker, job) {
+function calculateCollaborativeScore(worker) {
   return new Promise((resolve) => {
-    // Find acceptance rate of similar workers for similar jobs
+    // Find acceptance rate of similar workers (weighted similarity)
+    // Weights: Experience (3), Age (2), Gender (1). Threshold: 3
     db.get(`
       SELECT 
         COUNT(DISTINCT a.id) as total_interactions,
-        SUM(CASE WHEN a.status IN ('accepted', 'hired') THEN 1 ELSE 0 END) as positive_interactions
+        SUM(CASE WHEN a.status = 'accepted' THEN 1 ELSE 0 END) as positive_interactions
       FROM applications a
       JOIN workers w ON a.worker_id = w.id
-      JOIN jobs j ON a.job_id = j.id
       WHERE w.id != ?
         AND (
-          (ABS(COALESCE(w.experience, 0) - COALESCE(?, 0)) <= 2)
-          OR (w.age BETWEEN COALESCE(?, 0) - 5 AND COALESCE(?, 0) + 5 AND w.age IS NOT NULL)
-          OR (w.gender = ? AND w.gender IS NOT NULL)
-        )
-        AND (
-          j.title LIKE ?
-        )
+          (CASE WHEN ABS(COALESCE(w.experience, 0) - COALESCE(?, 0)) <= 2 THEN 3 ELSE 0 END) +
+          (CASE WHEN w.age BETWEEN COALESCE(?, 0) - 5 AND COALESCE(?, 0) + 5 THEN 2 ELSE 0 END) +
+          (CASE WHEN w.gender = ? THEN 1 ELSE 0 END)
+        ) >= 3
     `, [
       worker.id,
       worker.experience || 0,
       worker.age || 0,
       worker.age || 0,
-      worker.gender,
-      `%${job.title.split(' ')[0]}%` // Match first word of job title
+      worker.gender
     ], (err, result) => {
-      if (err || !result || result.total_interactions === 0) {
+      if (err) {
+        console.error('Error in collaborative scoring:', err);
+        resolve(25);
+        return;
+      }
+
+      if (!result || result.total_interactions === 0) {
         resolve(25); // Neutral score if no data
         return;
       }
@@ -75,12 +77,12 @@ function calculateCollaborativeScore(worker, job) {
  * Prefer workers with appropriate experience level
  */
 function calculateExperienceScore(worker, job) {
-  const workerExp = worker.experience || 0;
-  
   // If no experience data, give neutral score
-  if (!workerExp && workerExp !== 0) {
+  if (worker.experience === null || worker.experience === undefined) {
     return 15;
   }
+
+  const workerExp = worker.experience;
   
   // Agricultural jobs often need some experience but too much might mean overqualified
   // 0-2 years: good for entry-level
@@ -97,16 +99,15 @@ function calculateExperienceScore(worker, job) {
 }
 
 /**
- * Calculate worker reliability based on past application/hiring history
- * Rewards workers who have been hired before or have good response rates
+ * Calculate worker reliability based on past application history
+ * Rewards workers who have a high acceptance rate
  */
 function calculateReliabilityScore(worker) {
   return new Promise((resolve) => {
     db.get(`
       SELECT 
         COUNT(*) as total_apps,
-        SUM(CASE WHEN status = 'hired' THEN 1 ELSE 0 END) as hired_count,
-        SUM(CASE WHEN status IN ('accepted', 'hired') THEN 1 ELSE 0 END) as responded_count
+        SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END) as accepted_count
       FROM applications
       WHERE worker_id = ?
     `, [worker.id], (err, result) => {
@@ -115,12 +116,10 @@ function calculateReliabilityScore(worker) {
         return;
       }
       
-      const hireRate = result.hired_count / result.total_apps;
-      const responseRate = result.responded_count / result.total_apps;
+      const acceptanceRate = result.accepted_count / result.total_apps;
       
-      // Combine hire rate and response rate
-      const reliabilityScore = (hireRate * 0.6 + responseRate * 0.4) * 20;
-      resolve(Math.round(reliabilityScore));
+      // Scale to 0-20 based purely on acceptance rate
+      resolve(Math.round(acceptanceRate * 20));
     });
   });
 }
@@ -175,7 +174,7 @@ async function getRecommendedWorkers(job, threshold = 50, maxDistanceKm = MAX_DI
       const scoredWorkers = await Promise.all(
         workersWithDistance.map(async (worker) => ({
           ...worker,
-          score: await calculateJobScore(worker, job, worker.distance)
+          score: await calculateJobScore(worker, job)
         }))
       );
       
