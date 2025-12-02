@@ -8,11 +8,13 @@
 </head>
 <body>
   <div class="container">
-    <h1>Trabajos Disponibles</h1>
-    <p><a href="/">← Volver al inicio</a></p>
+    <div class="header">
+        <h1>Trabajos Disponibles</h1>
+        <a href="/" class="button secondary" style="padding: 8px 16px; border-radius: var(--radius); background: #eee; color: #333;">← Volver</a>
+    </div>
 
     <div id="jobsContainer">
-      <p>Cargando trabajos...</p>
+      <p class="text-center">Cargando trabajos...</p>
     </div>
   </div>
 
@@ -25,7 +27,7 @@
         const container = document.getElementById('jobsContainer');
 
         if (!Array.isArray(jobs) || jobs.length === 0) {
-          container.innerHTML = '<p>No hay trabajos disponibles.</p>';
+          container.innerHTML = '<p class="text-center">No hay trabajos disponibles en este momento.</p>';
           return;
         }
 
@@ -33,17 +35,17 @@
           <div class="job-card">
             <div class="job-info">
               <h3>${job.title}</h3>
-              <p>📍 ${job.location}</p>
-              <p>💰 $${job.pay_rate} ${job.pay_type}</p>
-              <p>📅 ${new Date(job.date).toLocaleDateString('es-MX')}</p>
-              <p>⏱️ ${job.duration}</p>
-              ${job.transport_provided ? '<p>🚌 Transporte incluido</p>' : ''}
-              <p>${job.description || ''}</p>
+              <div class="job-detail">📍 ${job.location}</div>
+              <div class="job-detail">💰 $${job.pay_rate} ${job.pay_type}</div>
+              <div class="job-detail">📅 ${new Date(job.date).toLocaleDateString('es-MX')}</div>
+              <div class="job-detail">⏱️ ${job.duration} horas</div>
+              ${job.transport_provided ? '<div class="tag">🚌 Transporte incluido</div>' : ''}
+              <p class="mt-2">${job.description || ''}</p>
             </div>
           </div>
         `).join('');
       } catch (err) {
-        document.getElementById('jobsContainer').innerHTML = '<p>Error al cargar los trabajos.</p>';
+        document.getElementById('jobsContainer').innerHTML = '<p class="text-center" style="color: var(--danger-color)">Error al cargar los trabajos.</p>';
         console.error(err);
       }
     }

@@ -17,8 +17,8 @@ router.post('/', (req, res) => {
 
   db.get('SELECT * FROM workers WHERE phone = ?', [cleanNumber], (err, worker) => {
     if (!worker && message !== 'registrar') {
-      sendWhatsAppMessage(From, '¡Hola! 👋 Para registrarte...');
-      return res.sendStatus(200); // ✅ returns here, so nothing else runs
+      sendWhatsAppMessage(From, '¡Hola! 👋 Para registrarte, por favor envía el mensaje "REGISTRAR".');
+      return res.sendStatus(200); 
     }
 
     // Handle commands
@@ -40,6 +40,11 @@ router.post('/', (req, res) => {
       return res.sendStatus(200);
     }
     if (message.startsWith('aceptar')) {
+      const jobId = message.split(' ')[1];
+      requestJobConfirmation(From, jobId);
+      return res.sendStatus(200);
+    }
+    if (message.startsWith('confirmar')) {
       const jobId = message.split(' ')[1];
       acceptJob(From, worker, jobId);
       return res.sendStatus(200);
@@ -74,7 +79,7 @@ function sendWhatsAppMessage(to, message) {
 
 function handleRegistration(phoneNumber, cleanNumber) {
   db.get('SELECT * FROM workers WHERE phone = ?', [cleanNumber], (err, worker) => {
-    const base = process.env.BASE_URL || 'https://dictatorially-untaunting-taren.ngrok-free.dev/';
+    const base = process.env.BASE_URL;
     const signupLink = `${base.replace(/\/$/, '')}/signup?phone=${cleanNumber}`;
 
     if (worker) {
@@ -125,7 +130,7 @@ function sendAvailableJobs(phoneNumber, worker) {
         message += `💰 $${job.pay_rate} ${job.pay_type}\n`;
         message += `📅 ${job.date}\n`;
         message += job.transport_provided ? '🚌 Transporte incluido\n' : '';
-        message += `⏱️ ${job.duration}\n`;
+        message += `⏱️ ${job.duration} horas\n`;
         message += '---\n';
       });
       message += '\nPara aceptar, envía: ACEPTAR [número]';
@@ -133,6 +138,25 @@ function sendAvailableJobs(phoneNumber, worker) {
       sendWhatsAppMessage(phoneNumber, message);
     }
   );
+}
+
+function requestJobConfirmation(phoneNumber, jobId) {
+  if (!jobId) {
+    sendWhatsAppMessage(phoneNumber, '❌ Por favor especifica el número del trabajo. Ejemplo: ACEPTAR 5');
+    return;
+  }
+
+  const message = 
+    `🛡️ *TUS DERECHOS Y COMPROMISOS*\n\n` +
+    `Antes de aceptar el trabajo #${jobId}, recuerda que tienes derecho a:\n` +
+    `• 💰 Pago justo y acordado\n` +
+    `• 🤝 Trato digno y respetuoso\n` +
+    `• 🛡️ Ambiente de trabajo seguro\n` +
+    `• 💧 Agua potable y descansos\n\n` +
+    `Al confirmar, aceptas estos términos y te comprometes a cumplir con el trabajo.\n\n` +
+    `Para finalizar, responde: *CONFIRMAR ${jobId}*`;
+
+  sendWhatsAppMessage(phoneNumber, message);
 }
 
 function acceptJob(phoneNumber, worker, jobId) {
@@ -183,7 +207,7 @@ function unsubscribe(phoneNumber, cleanNumber) {
 }
 
 function sendJobsPageLink(phoneNumber) {
-  const base = process.env.BASE_URL || `https://dictatorially-untaunting-taren.ngrok-free.dev`;
+  const base = process.env.BASE_URL;
   const jobsLink = `${base.replace(/\/$/, '')}/jobs`;
   sendWhatsAppMessage(phoneNumber, `🔗 Ver trabajos disponibles: ${jobsLink}`);
 }
@@ -199,7 +223,7 @@ async function sendJobToWorkers(job, specificWorkers = null) {
       `💰 $${job.pay_rate} ${job.pay_type}\n` +
       `📅 ${job.date}\n` +
       (job.transport_provided ? '🚌 Transporte incluido\n' : '') +
-      `⏱️ ${job.duration}\n\n` +
+      `⏱️ ${job.duration} horas\n\n` +
       `Para aceptar, envía: ACEPTAR ${job.id}`;
     
     workers.forEach(worker => {

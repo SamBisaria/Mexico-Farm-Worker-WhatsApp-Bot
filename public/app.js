@@ -1,4 +1,4 @@
-const API_URL = 'https://dictatorially-untaunting-taren.ngrok-free.dev/api';
+const API_URL = '/api';
 let authToken = null;
 
 // Check if already logged in
@@ -85,12 +85,13 @@ function useMyLocation() {
             
             jobStatusEl.textContent = '✅ Obteniendo dirección...';
             try {
-                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, {
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`, {
                     headers: { 'User-Agent': 'SanQuintinJobsApp/1.0' }
                 });
                 const data = await response.json();
-                if (data && data.display_name) {
-                    jobAddressInput.value = data.display_name;
+                if (data && data.address) {
+                    const formattedAddress = formatAddress(data.address);
+                    jobAddressInput.value = formattedAddress;
                     document.getElementById('jobLatitude').value = lat;
                     document.getElementById('jobLongitude').value = lng;
                     jobStatusEl.textContent = '✅ Ubicación obtenida';
@@ -106,6 +107,32 @@ function useMyLocation() {
             console.error('Geolocation error:', error);
         }
     );
+}
+
+function formatAddress(address) {
+    const parts = [];
+    
+    // Street
+    if (address.road) {
+        let street = address.road;
+        if (address.house_number) {
+            street = `${address.house_number} ${address.road}`;
+        }
+        parts.push(street);
+    }
+    
+    // Neighborhood (optional)
+    if (address.suburb) parts.push(address.suburb);
+    else if (address.neighbourhood) parts.push(address.neighbourhood);
+    
+    // City
+    const city = address.city || address.town || address.village || address.hamlet;
+    if (city) parts.push(city);
+    
+    // State
+    if (address.state) parts.push(address.state);
+    
+    return parts.join(', ');
 }
 
 jobAddressInput.addEventListener('input', function() {
@@ -134,14 +161,15 @@ jobAddressInput.addEventListener('input', function() {
             const results = await response.json();
             
             if (results && results.length > 0) {
-                jobSuggestionsDiv.innerHTML = results.map(result => 
-                    `<div class="job-suggestion-item"
+                jobSuggestionsDiv.innerHTML = results.map(result => {
+                    const formatted = formatAddress(result.address);
+                    return `<div class="job-suggestion-item"
                          data-lat="${result.lat}" 
                          data-lon="${result.lon}" 
-                         data-address="${result.display_name}">
-                      ${result.display_name}
-                    </div>`
-                ).join('');
+                         data-address="${formatted}">
+                      ${formatted}
+                    </div>`;
+                }).join('');
                 jobSuggestionsDiv.style.display = 'block';
                 jobStatusEl.textContent = '';
                 
@@ -250,16 +278,16 @@ async function loadJobs() {
 
         jobsList.innerHTML = jobs.map(job => `
             <div class="job-card">
-                <div class="job-info">
-                    <h4>${job.title}</h4>
-                    <p>📍 ${job.location}</p>
-                    <p>💰 $${job.pay_rate} ${job.pay_type}</p>
-                    <p>📅 ${new Date(job.date).toLocaleDateString('es-MX')}</p>
-                    <p>⏱️ ${job.duration}</p>
-                    ${job.transport_provided ? '<p>🚌 Transporte incluido</p>' : ''}
+                <div class="job-info" style="flex: 1;">
+                    <h3>${job.title}</h3>
+                    <div class="job-detail">📍 ${job.location}</div>
+                    <div class="job-detail">💰 $${job.pay_rate} ${job.pay_type}</div>
+                    <div class="job-detail">📅 ${new Date(job.date).toLocaleDateString('es-MX')}</div>
+                    <div class="job-detail">⏱️ ${job.duration} horas</div>
+                    ${job.transport_provided ? '<div class="tag">🚌 Transporte incluido</div>' : ''}
                 </div>
-                <div class="job-actions">
-                    <button onclick="deleteJob(${job.id})">Eliminar</button>
+                <div class="job-actions" style="margin-left: 15px;">
+                    <button onclick="deleteJob(${job.id})" class="danger" style="width: auto; padding: 8px 16px;">Eliminar</button>
                 </div>
             </div>
         `).join('');

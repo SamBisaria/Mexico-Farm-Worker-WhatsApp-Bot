@@ -9,27 +9,42 @@
 <body>
     <div class="container">
         <h1>Portal de Empleos Agrícolas</h1>
-        <p><a href="/jobs">Ver trabajos disponibles</a></p>
+        <p class="text-center"><a href="/jobs">Ver trabajos disponibles</a></p>
         
         <div id="loginForm" class="form-container">
             <h2>Iniciar Sesión</h2>
             <form id="login">
-                <input type="email" id="loginEmail" placeholder="Correo electrónico" required>
-                <input type="password" id="loginPassword" placeholder="Contraseña" required>
+                <div>
+                    <label for="loginEmail">Correo electrónico</label>
+                    <input type="email" id="loginEmail" placeholder="ejemplo@correo.com" required>
+                </div>
+                <div>
+                    <label for="loginPassword">Contraseña</label>
+                    <input type="password" id="loginPassword" placeholder="********" required>
+                </div>
                 <button type="submit">Iniciar Sesión</button>
             </form>
-            <p>¿No tienes cuenta? <a href="#" onclick="showRegister()">Regístrate</a></p>
+            <p class="mt-2 text-center">¿No tienes cuenta? <a href="#" onclick="showRegister()">Regístrate</a></p>
         </div>
 
         <div id="registerForm" class="form-container" style="display:none;">
             <h2>Registro de Empleador</h2>
             <form id="register">
-                <input type="text" id="companyName" placeholder="Nombre de la empresa" required>
-                <input type="email" id="registerEmail" placeholder="Correo electrónico" required>
-                <input type="password" id="registerPassword" placeholder="Contraseña" required>
+                <div>
+                    <label for="companyName">Nombre de la empresa</label>
+                    <input type="text" id="companyName" placeholder="Nombre de la empresa" required>
+                </div>
+                <div>
+                    <label for="registerEmail">Correo electrónico</label>
+                    <input type="email" id="registerEmail" placeholder="ejemplo@correo.com" required>
+                </div>
+                <div>
+                    <label for="registerPassword">Contraseña</label>
+                    <input type="password" id="registerPassword" placeholder="********" required>
+                </div>
                 <button type="submit">Registrarse</button>
             </form>
-            <p>¿Ya tienes cuenta? <a href="#" onclick="showLogin()">Inicia sesión</a></p>
+            <p class="mt-2 text-center">¿Ya tienes cuenta? <a href="#" onclick="showLogin()">Inicia sesión</a></p>
         </div>
 
         <div id="dashboard" style="display:none;">
@@ -41,10 +56,13 @@
             <div class="job-form">
                 <h3>Publicar Nuevo Trabajo</h3>
                 <form id="jobForm">
-                    <input type="text" id="title" placeholder="Título del trabajo" required>
+                    <div>
+                        <label for="title">Título del trabajo</label>
+                        <input type="text" id="title" placeholder="Ej: Recolector de fresas" required>
+                    </div>
                     
-                    <div style="background:#f5f5f5; padding:1rem; border-radius:4px; margin:1rem 0;">
-                        <h4 style="margin-top:0;">📍 Ubicación del Trabajo</h4>
+                    <div class="location-box">
+                        <h4>📍 Ubicación del Trabajo</h4>
                         <div class="address-container">
                             <input type="text" id="jobAddress" placeholder="Escribe la dirección o usa GPS..." 
                                    autocomplete="off" required>
@@ -53,25 +71,50 @@
                             </button>
                             <div id="jobAddressSuggestions"></div>
                         </div>
-                        <div id="jobLocationStatus" style="margin-top:0.5rem; font-size:0.9em; color:#666;"></div>
+                        <div id="jobLocationStatus" class="mt-2" style="font-size:0.9em; color:var(--text-light);"></div>
                         <input type="hidden" id="jobLatitude">
                         <input type="hidden" id="jobLongitude">
                     </div>
 
-                    <input type="number" id="payRate" placeholder="Pago" required>
-                    <select id="payType" required>
-                        <option value="">Tipo de pago</option>
-                        <option value="por hora">Por hora</option>
-                        <option value="por día">Por día</option>
-                        <option value="por caja">Por caja</option>
-                        <option value="por kilo">Por kilo</option>
-                    </select>
-                    <label>
-                        <input type="checkbox" id="transport"> Transporte incluido
-                    </label>
-                    <input type="text" id="duration" placeholder="Duración (ej: 8 horas)" required>
-                    <input type="date" id="date" required>
-                    <textarea id="description" placeholder="Descripción del trabajo" rows="3"></textarea>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <label for="payRate">Pago</label>
+                            <input type="number" id="payRate" placeholder="0.00" required>
+                        </div>
+                        <div>
+                            <label for="payType">Tipo de pago</label>
+                            <select id="payType" required>
+                                <option value="">Seleccionar...</option>
+                                <option value="por hora">Por hora</option>
+                                <option value="por día">Por día</option>
+                                <option value="por caja">Por caja</option>
+                                <option value="por kilo">Por kilo</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="transport" style="width: auto;"> 
+                            Transporte incluido
+                        </label>
+                    </div>
+
+                    <div>
+                        <label for="duration">Duración</label>
+                        <input type="text" id="duration" placeholder="Ej: 8 horas" required>
+                    </div>
+
+                    <div>
+                        <label for="date">Fecha</label>
+                        <input type="date" id="date" required>
+                    </div>
+
+                    <div>
+                        <label for="description">Descripción</label>
+                        <textarea id="description" placeholder="Detalles adicionales del trabajo..." rows="3"></textarea>
+                    </div>
+
                     <button type="submit">Publicar Trabajo</button>
                 </form>
             </div>

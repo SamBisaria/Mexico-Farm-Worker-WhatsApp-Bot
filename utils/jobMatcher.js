@@ -15,13 +15,8 @@ const MAX_DISTANCE_KM = 10;
 async function calculateJobScore(worker, job) {
   let score = 0;
   
-  // 1. Collaborative filtering (0-50 points) - Learn from similar workers
   score += await calculateCollaborativeScore(worker);
-  
-  // 2. Experience match (0-30 points)
   score += calculateExperienceScore(worker, job);
-  
-  // 3. Worker reliability (0-20 points)
   score += await calculateReliabilityScore(worker);
   
   return score;

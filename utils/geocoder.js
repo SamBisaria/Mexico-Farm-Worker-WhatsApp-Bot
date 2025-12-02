@@ -11,7 +11,7 @@ async function geocodeAddress(address) {
 
   return new Promise((resolve) => {
     const encodedAddress = encodeURIComponent(address);
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodedAddress}&format=json&limit=1`;
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodedAddress}&format=json&limit=1&addressdetails=1`;
 
     https.get(url, {
       headers: {
@@ -28,10 +28,36 @@ async function geocodeAddress(address) {
         try {
           const results = JSON.parse(data);
           if (results && results.length > 0) {
+            const result = results[0];
+            let formatted = result.display_name;
+            
+            if (result.address) {
+                const parts = [];
+                const a = result.address;
+                
+                // Street
+                if (a.road) {
+                    parts.push(a.house_number ? `${a.house_number} ${a.road}` : a.road);
+                }
+                
+                // Neighborhood
+                if (a.suburb && a.suburb !== a.city) parts.push(a.suburb);
+                else if (a.neighbourhood && a.neighbourhood !== a.city) parts.push(a.neighbourhood);
+                
+                // City
+                const city = a.city || a.town || a.village || a.hamlet;
+                if (city) parts.push(city);
+                
+                // State
+                if (a.state) parts.push(a.state);
+                
+                if (parts.length > 0) formatted = parts.join(', ');
+            }
+            
             resolve({
-              latitude: parseFloat(results[0].lat),
-              longitude: parseFloat(results[0].lon),
-              formattedAddress: results[0].display_name
+              latitude: parseFloat(result.lat),
+              longitude: parseFloat(result.lon),
+              formattedAddress: formatted
             });
           } else {
             console.log('No geocoding results for:', address);
