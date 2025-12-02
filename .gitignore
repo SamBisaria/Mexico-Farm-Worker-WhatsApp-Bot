@@ -26,6 +26,8 @@ pids
 *.pid
 *.seed
 *.pid.lock
+*.db
+*.sqlite
 
 # Editor directories and files
 .idea
