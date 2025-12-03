@@ -93,8 +93,7 @@ function handleRegistration(phoneNumber, cleanNumber) {
       // Do not auto-insert here; require the user to complete the online form.
       sendWhatsAppMessage(phoneNumber,
         '🎉 ¡Casi listo! Para completar tu registro, por favor abre el siguiente enlace y rellena el formulario:\n' +
-        `${signupLink}\n\n` +
-        'Si no puedes abrir el enlace, responde con "AYUDA" para más opciones.');
+        `${signupLink}\n\n`);
     }
   });
 }
@@ -131,6 +130,9 @@ function sendAvailableJobs(phoneNumber, worker) {
         message += `📅 ${job.date}\n`;
         message += job.transport_provided ? '🚌 Transporte incluido\n' : '';
         message += `⏱️ ${job.duration} horas\n`;
+        if (job.description) {
+          message += `📝 ${job.description}\n`;
+        }
         message += '---\n';
       });
       message += '\nPara aceptar, envía: ACEPTAR [número]';
@@ -223,7 +225,8 @@ async function sendJobToWorkers(job, specificWorkers = null) {
       `💰 $${job.pay_rate} ${job.pay_type}\n` +
       `📅 ${job.date}\n` +
       (job.transport_provided ? '🚌 Transporte incluido\n' : '') +
-      `⏱️ ${job.duration} horas\n\n` +
+      `⏱️ ${job.duration} horas\n` +
+      (job.description ? `📝 ${job.description}\n\n` : '\n') +
       `Para aceptar, envía: ACEPTAR ${job.id}`;
     
     workers.forEach(worker => {
