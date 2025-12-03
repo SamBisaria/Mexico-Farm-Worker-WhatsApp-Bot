@@ -4,32 +4,30 @@ const { calculateDistance } = require('./geocoder');
 // Maximum distance to recommend jobs (in kilometers)
 const MAX_DISTANCE_KM = 10;
 
-/**
- * Calculate recommendation score for a worker-job pair using hybrid approach:
- * - Collaborative filtering based on similar workers' acceptance patterns (50 points max)
- * - Experience match (30 points max)
- * - Worker reliability/response rate (20 points max)
- * 
- * NOTE: Location is NOT part of scoring - it's a hard filter (jobs outside MAX_DISTANCE_KM are excluded)
- */
+
 async function calculateJobScore(worker, job) {
   let score = 0;
   
+  // 1. Demographic Similarity (Collaborative Filtering for Cold Start)
   score += await calculateCollaborativeScore(worker);
-  score += calculateExperienceScore(worker, job);
-  score += await calculateReliabilityScore(worker);
   
-  return score;
+  // 2. Hard Skills (Experience)
+  score += calculateExperienceScore(worker, job);
+  
+  // 3. Global Reliability (General Acceptance Rate)
+  score += await calculateReliabilityScore(worker);
+
+  // 4. Contextual Relevance (Employer Loyalty)
+  score += await calculateRepeatEmployerScore(worker, job);
+  
+  return Math.min(score, 100); // Cap at 100
 }
 
-/**
- * Collaborative filtering: Find similar workers and see their acceptance patterns
- * Looks at workers with similar demographics who accepted similar jobs
- */
+
 function calculateCollaborativeScore(worker) {
+  // This implements "Demographic-Based Collaborative Filtering"
+  // We predict success based on how similar workers (Neighbors) have performed.
   return new Promise((resolve) => {
-    // Find acceptance rate of similar workers (weighted similarity)
-    // Weights: Experience (3), Age (2), Gender (1). Threshold: 3
     db.get(`
       SELECT 
         COUNT(DISTINCT a.id) as total_interactions,
@@ -51,52 +49,44 @@ function calculateCollaborativeScore(worker) {
     ], (err, result) => {
       if (err) {
         console.error('Error in collaborative scoring:', err);
-        resolve(25);
+        resolve(20);
         return;
       }
 
       if (!result || result.total_interactions === 0) {
-        resolve(25); // Neutral score if no data
+        resolve(20); // Neutral baseline for cold start
         return;
       }
       
-      // Calculate acceptance rate and scale to 0-50
       const acceptanceRate = result.positive_interactions / result.total_interactions;
-      resolve(Math.round(acceptanceRate * 50));
+      // Weight: 30 points max
+      resolve(Math.round(acceptanceRate * 30));
     });
   });
 }
 
-/**
- * Calculate experience match score
- * Prefer workers with appropriate experience level
- */
+
 function calculateExperienceScore(worker, job) {
   // If no experience data, give neutral score
   if (worker.experience === null || worker.experience === undefined) {
-    return 15;
+    return 10;
   }
 
   const workerExp = worker.experience;
   
-  // Agricultural jobs often need some experience but too much might mean overqualified
-  // 0-2 years: good for entry-level
-  // 2-5 years: good for most jobs
-  // 5+ years: good for specialized jobs
-  
-  if (workerExp >= 1 && workerExp <= 5) {
-    return 30; // Sweet spot for most agricultural work
-  } else if (workerExp === 0) {
-    return 25; // Entry level still acceptable
+  // Logic: More experience is generally better, up to a point of diminishing returns
+  if (workerExp >= 5) {
+    return 30; // Expert
+  } else if (workerExp >= 2) {
+    return 25; // Intermediate
+  } else if (workerExp >= 1) {
+    return 20; // Beginner
   } else {
-    return 20; // Very experienced workers might not be interested
+    return 15; // No experience
   }
 }
 
-/**
- * Calculate worker reliability based on past application history
- * Rewards workers who have a high acceptance rate
- */
+
 function calculateReliabilityScore(worker) {
   return new Promise((resolve) => {
     db.get(`
@@ -113,8 +103,39 @@ function calculateReliabilityScore(worker) {
       
       const acceptanceRate = result.accepted_count / result.total_apps;
       
-      // Scale to 0-20 based purely on acceptance rate
+      // Weight: 20 points max
       resolve(Math.round(acceptanceRate * 20));
+    });
+  });
+}
+
+function calculateRepeatEmployerScore(worker, job) {
+  // Bonus points if the worker has worked for THIS specific employer before
+  return new Promise((resolve) => {
+    if (!job.employer_id) {
+      resolve(0);
+      return;
+    }
+
+    db.get(`
+      SELECT COUNT(*) as count 
+      FROM applications a
+      JOIN jobs j ON a.job_id = j.id
+      WHERE a.worker_id = ? 
+      AND j.employer_id = ?
+      AND a.status = 'accepted'
+    `, [worker.id, job.employer_id], (err, result) => {
+      if (err || !result) {
+        resolve(0);
+        return;
+      }
+
+      // If they have worked for this farm before, give a massive trust bonus
+      if (result.count > 0) {
+        resolve(20);
+      } else {
+        resolve(0);
+      }
     });
   });
 }
