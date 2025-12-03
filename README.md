@@ -43,6 +43,6 @@ Job matching platform for agricultural workers.
 - `utils/`: Utility functions
 - `public/`: Static files
 
-### Important Notes
+## Important Notes
 
 * The `BASE_URL` environment variable **must point to a public-facing URL**. This is required for the WhatsApp bot to work correctly, as Twilio needs a webhook endpoint it can reach. Localhost URLs will not work unless you use a tunnel service like [ngrok](https://ngrok.com/).
