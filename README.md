@@ -27,7 +27,7 @@ Job matching platform for agricultural workers.
 
 ## Environment Variables
 
-- `PORT`: Server port (default: 3000)
+- `PORT`: Server port (default: 3000). 
 - `BASE_URL`: Base URL of the application
 - `JWT_SECRET`: Secret key for JWT authentication
 - `TWILIO_ACCOUNT_SID`: Twilio Account SID
@@ -42,3 +42,7 @@ Job matching platform for agricultural workers.
 - `database/`: Database configuration
 - `utils/`: Utility functions
 - `public/`: Static files
+
+### Important Notes
+
+* The `BASE_URL` environment variable **must point to a public-facing URL**. This is required for the WhatsApp bot to work correctly, as Twilio needs a webhook endpoint it can reach. Localhost URLs will not work unless you use a tunnel service like [ngrok](https://ngrok.com/).
