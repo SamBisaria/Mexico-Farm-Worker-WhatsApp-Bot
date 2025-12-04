@@ -27,7 +27,6 @@ router.post('/', authenticateToken, async (req, res) => {
   // Import geocoder
   const { geocodeAddress } = require('../utils/geocoder');
 
-  // Get coordinates - either from request or geocode the address
   let lat = latitude;
   let lng = longitude;
   let finalAddress = address || location;

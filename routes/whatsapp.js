@@ -214,8 +214,6 @@ function sendJobsPageLink(phoneNumber) {
   sendWhatsAppMessage(phoneNumber, `🔗 Ver trabajos disponibles: ${jobsLink}`);
 }
 
-// Function to send job notifications (called from jobs.js)
-// Uses hybrid recommendation algorithm combining collaborative filtering and location proximity
 async function sendJobToWorkers(job, specificWorkers = null) {
   const sendTo = (workers) => {
     const message = 

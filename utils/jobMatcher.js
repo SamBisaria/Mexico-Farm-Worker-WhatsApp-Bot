@@ -8,16 +8,9 @@ const MAX_DISTANCE_KM = 10;
 async function calculateJobScore(worker, job) {
   let score = 0;
   
-  // 1. Demographic Similarity (Collaborative Filtering for Cold Start)
   score += await calculateCollaborativeScore(worker);
-  
-  // 2. Hard Skills (Experience)
   score += calculateExperienceScore(worker, job);
-  
-  // 3. Global Reliability (General Acceptance Rate)
   score += await calculateReliabilityScore(worker);
-
-  // 4. Contextual Relevance (Employer Loyalty)
   score += await calculateRepeatEmployerScore(worker, job);
   
   return Math.min(score, 100); // Cap at 100
@@ -25,8 +18,7 @@ async function calculateJobScore(worker, job) {
 
 
 function calculateCollaborativeScore(worker) {
-  // This implements "Demographic-Based Collaborative Filtering"
-  // We predict success based on how similar workers (Neighbors) have performed.
+  //Demographic-Based Collaborative Filtering
   return new Promise((resolve) => {
     db.get(`
       SELECT 
@@ -59,7 +51,7 @@ function calculateCollaborativeScore(worker) {
       }
       
       const acceptanceRate = result.positive_interactions / result.total_interactions;
-      // Weight: 30 points max
+      //30 points max
       resolve(Math.round(acceptanceRate * 30));
     });
   });
@@ -74,15 +66,14 @@ function calculateExperienceScore(worker, job) {
 
   const workerExp = worker.experience;
   
-  // Logic: More experience is generally better, up to a point of diminishing returns
   if (workerExp >= 5) {
-    return 30; // Expert
+    return 30; 
   } else if (workerExp >= 2) {
-    return 25; // Intermediate
+    return 25; 
   } else if (workerExp >= 1) {
-    return 20; // Beginner
+    return 20;
   } else {
-    return 15; // No experience
+    return 15;
   }
 }
 
@@ -103,14 +94,14 @@ function calculateReliabilityScore(worker) {
       
       const acceptanceRate = result.accepted_count / result.total_apps;
       
-      // Weight: 20 points max
+      //20 points max
       resolve(Math.round(acceptanceRate * 20));
     });
   });
 }
 
 function calculateRepeatEmployerScore(worker, job) {
-  // Bonus points if the worker has worked for THIS specific employer before
+  // Bonus points if the worker has worked for same employer before
   return new Promise((resolve) => {
     if (!job.employer_id) {
       resolve(0);
@@ -130,7 +121,6 @@ function calculateRepeatEmployerScore(worker, job) {
         return;
       }
 
-      // If they have worked for this farm before, give a massive trust bonus
       if (result.count > 0) {
         resolve(20);
       } else {
@@ -157,7 +147,6 @@ async function getRecommendedWorkers(job, threshold = 50, maxDistanceKm = MAX_DI
         return;
       }
       
-      // Filter by distance FIRST, then calculate scores for remaining workers
       const workersWithDistance = workers
         .map(worker => {
           const distance = calculateDistance(
@@ -174,7 +163,6 @@ async function getRecommendedWorkers(job, threshold = 50, maxDistanceKm = MAX_DI
             console.log(`Worker ${worker.id} (${worker.name}) has no location data - including by default`);
             return true;
           }
-          // Only include workers within max distance
           return worker.distance <= maxDistanceKm;
         });
       
@@ -186,7 +174,6 @@ async function getRecommendedWorkers(job, threshold = 50, maxDistanceKm = MAX_DI
         return;
       }
       
-      // Calculate scores for workers within distance
       const scoredWorkers = await Promise.all(
         workersWithDistance.map(async (worker) => ({
           ...worker,
@@ -206,7 +193,7 @@ async function getRecommendedWorkers(job, threshold = 50, maxDistanceKm = MAX_DI
         recommended = recommended.slice(0, maxWorkers);
       }
       
-      // Fallback: if too few workers match, lower threshold
+      //If too few workers match, lower threshold
       if (recommended.length < 3 && scoredWorkers.length >= 3) {
         const lowerThreshold = Math.max(30, threshold - 20);
         console.log(`Only ${recommended.length} workers found, lowering threshold to ${lowerThreshold}`);

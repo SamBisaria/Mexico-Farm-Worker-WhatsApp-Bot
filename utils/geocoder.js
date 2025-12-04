@@ -86,7 +86,7 @@ async function geocodeAddress(address) {
 function calculateDistance(lat1, lon1, lat2, lon2) {
   if (!lat1 || !lon1 || !lat2 || !lon2) return null;
 
-  const R = 6371; // Earth's radius in kilometers
+  const R = 6371; // Earth's radius in km
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
   
