@@ -18,14 +18,15 @@ async function calculateJobScore(worker, job) {
 
 
 function calculateCollaborativeScore(worker) {
-  //Demographic-Based Collaborative Filtering
+  // Demographic-Based Collaborative Filtering
   return new Promise((resolve) => {
     db.get(`
       SELECT 
-        COUNT(DISTINCT a.id) as total_interactions,
-        SUM(CASE WHEN a.status = 'accepted' THEN 1 ELSE 0 END) as positive_interactions
+        COUNT(DISTINCT j.date) as total_unique_work_days,
+        COUNT(DISTINCT w.id) as neighbor_count
       FROM applications a
       JOIN workers w ON a.worker_id = w.id
+      JOIN jobs j ON a.job_id = j.id
       WHERE w.id != ?
         AND (
           (CASE WHEN ABS(COALESCE(w.experience, 0) - COALESCE(?, 0)) <= 2 THEN 3 ELSE 0 END) +
@@ -41,18 +42,22 @@ function calculateCollaborativeScore(worker) {
     ], (err, result) => {
       if (err) {
         console.error('Error in collaborative scoring:', err);
-        resolve(20);
+        resolve(10);
         return;
       }
 
-      if (!result || result.total_interactions === 0) {
-        resolve(20); // Neutral baseline for cold start
+      if (!result || result.neighbor_count === 0) {
+        resolve(10); // Neutral baseline for cold start
         return;
       }
       
-      const acceptanceRate = result.positive_interactions / result.total_interactions;
-      //30 points max
-      resolve(Math.round(acceptanceRate * 30));
+      // Calculate average UNIQUE DAYS worked per neighbor
+      // This filters out "spamming" behavior from the demographic baseline
+      const avgDaysPerNeighbor = result.total_unique_work_days / result.neighbor_count;
+      
+      const score = 30 * (1 - Math.exp(-0.1 * avgDaysPerNeighbor));
+      
+      resolve(Math.round(score));
     });
   });
 }
@@ -80,22 +85,51 @@ function calculateExperienceScore(worker, job) {
 
 function calculateReliabilityScore(worker) {
   return new Promise((resolve) => {
-    db.get(`
-      SELECT 
-        COUNT(*) as total_apps,
-        SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END) as accepted_count
-      FROM applications
-      WHERE worker_id = ?
-    `, [worker.id], (err, result) => {
-      if (err || !result || result.total_apps === 0) {
-        resolve(10); // New workers get neutral score
+    // Get dates of all accepted jobs to detect consistency vs spamming
+    db.all(`
+      SELECT j.date
+      FROM applications a
+      JOIN jobs j ON a.job_id = j.id
+      WHERE a.worker_id = ? AND a.status = 'accepted'
+    `, [worker.id], (err, rows) => {
+      if (err || !rows || rows.length === 0) {
+        resolve(0); 
         return;
       }
       
-      const acceptanceRate = result.accepted_count / result.total_apps;
+      // 1. Detect Overbooking (Spamming)
+      const dateCounts = {};
+      let spamDays = 0;
+      let uniqueDays = 0;
+
+      rows.forEach(row => {
+        if (!dateCounts[row.date]) {
+          dateCounts[row.date] = 0;
+          uniqueDays++;
+        }
+        dateCounts[row.date]++;
+        if (dateCounts[row.date] === 3) { // Counted as spam if > 2 jobs/day
+            spamDays++;
+        }
+      });
+
+      // 2. Calculate "Honest Work Days"
+      // We penalize spam days heavily. If you double-book, that day counts as negative.
+      let rawScore = uniqueDays - (spamDays * 2);
       
-      //20 points max
-      resolve(Math.round(acceptanceRate * 20));
+      // 3. Logarithmic Growth (Diminishing Returns)
+      // We want 30 days of work (a full month) to be "Excellent" (near 20 pts)
+      // Formula: 20 * (1 - e^(-0.1 * rawScore))
+      // If rawScore = 5 days -> 7.8 pts
+      // If rawScore = 10 days -> 12.6 pts
+      // If rawScore = 30 days -> 19.0 pts
+      
+      let finalScore = 0;
+      if (rawScore > 0) {
+        finalScore = 20 * (1 - Math.exp(-0.1 * rawScore));
+      }
+
+      resolve(Math.round(finalScore));
     });
   });
 }
